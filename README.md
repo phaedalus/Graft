@@ -44,3 +44,7 @@ Each title owns its version permanently.
 ---
 
 Graft is a foundation, not a product.
+
+## Liscense
+
+MIT
