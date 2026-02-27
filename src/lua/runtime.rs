@@ -1,5 +1,6 @@
 use std::fs;
 use mlua::{Lua, Function};
+use raylib::{ffi::KeyboardKey, RaylibHandle};
 use crate::core::{App, Frame};
 
 pub struct LuaRuntime {
@@ -34,10 +35,36 @@ impl LuaRuntime {
 }
 
 impl App for LuaRuntime {
-    fn update(&mut self, dt: f32) {
-        if let Some(f) = &self.update_fn {
-            let _ = f.call::<()>(dt);
-        }
+    fn update(&mut self, dt: f32, rl: &RaylibHandle) {
+        let Some(f) = &self.update_fn else { return; };
+        let update_fn = f.clone();
+
+        self.lua
+            .scope(|scope| {
+                let globals = self.lua.globals();
+
+                let is_key_down = scope.create_function(|_, key: String| {
+                    let key = string_to_key(&key);
+                    Ok(rl.is_key_down(key))
+                })?;
+                globals.set("is_key_down", is_key_down)?;
+
+                let is_key_pressed = scope.create_function(|_, key: String| {
+                    let key = string_to_key(&key);
+                    Ok(rl.is_key_pressed(key))
+                })?;
+                globals.set("is_key_pressed", is_key_pressed)?;
+
+                let mouse_pos = scope.create_function(|_, ()| {
+                    let pos = rl.get_mouse_position();
+                    Ok((pos.x, pos.y))
+                })?;
+                globals.set("get_mouse_position", mouse_pos)?;
+
+                update_fn.call::<()>(dt)?;
+                Ok(())
+            })
+            .unwrap();
     }
 
     fn draw(&mut self, frame: &mut Frame) {
@@ -56,13 +83,27 @@ impl App for LuaRuntime {
                         frame.text(&text, x, y, size, raylib::prelude::Color::WHITE);
                         Ok(())
                     })?;
-
                 globals.set("draw_text", draw_text_fn)?;
 
                 draw_fn.call::<()>(())?;
-
                 Ok(())
             })
             .unwrap();
+    }
+}
+
+fn string_to_key(name: &str) -> KeyboardKey {
+    match name.to_uppercase().as_str() {
+        "W" => KeyboardKey::KEY_W,
+        "A" => KeyboardKey::KEY_A,
+        "S" => KeyboardKey::KEY_S,
+        "D" => KeyboardKey::KEY_D,
+        "SPACE" => KeyboardKey::KEY_SPACE,
+        "ESC" => KeyboardKey::KEY_ESCAPE,
+        "UP" => KeyboardKey::KEY_UP,
+        "DOWN" => KeyboardKey::KEY_DOWN,
+        "LEFT" => KeyboardKey::KEY_LEFT,
+        "RIGHT" => KeyboardKey::KEY_LEFT,
+        _ => KeyboardKey::KEY_NULL,
     }
 }

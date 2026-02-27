@@ -1,12 +1,22 @@
 mod core;
 mod lua;
 
-use core::runtime::Runtime;
+use core::runtime::{Runtime, RuntimeConfig};
 use lua::runtime::LuaRuntime;
 
 fn main() {
-    let lua_app = LuaRuntime::new("main.lua");
+    let app = LuaRuntime::new("main.lua");
 
-    let runtime = Runtime::new(60, lua_app);
+    let config = RuntimeConfig {
+        width: 1280,
+        height: 720,
+        title: "Graft Game".to_string(),
+        target_fps: 60,
+        resizable: false,
+        fullscreen: false,
+        borderless: false,
+    };
+
+    let runtime = Runtime::new(config, app);
     runtime.run();
 }
